@@ -1,10 +1,10 @@
 const AWSXRay = require('aws-xray-sdk');
 const XRayExpress = AWSXRay.express;
+
+const { DynamoDB } = require('@aws-sdk/client-dynamodb');
 const express = require('express');
 
-// Capture all AWS clients we create
-const AWS = AWSXRay.captureAWS(require('aws-sdk'));
-AWS.config.update({region: process.env.DEFAULT_AWS_REGION || 'us-west-2'});
+const awsRegion = process.env.DEFAULT_AWS_REGION || 'us-west-2';
 
 // Capture all outgoing https requests
 AWSXRay.captureHTTPsGlobal(require('https'));
@@ -28,8 +28,11 @@ app.get('/', (req, res) => {
 });
 
 app.get('/aws-sdk/', (req, res) => {
-  const ddb = new AWS.DynamoDB();
-  const ddbPromise = ddb.listTables().promise();
+  // Capture DynamoDB client
+  const ddb = AWSXRay.captureAWSClient(new DynamoDB({
+    region: awsRegion
+  }));
+  const ddbPromise = ddb.listTables();
 
   ddbPromise.then(function(data) {
     res.send(`ListTables result:\n ${JSON.stringify(data)}`);
